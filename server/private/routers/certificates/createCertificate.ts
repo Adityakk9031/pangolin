@@ -41,35 +41,30 @@ export async function createCertificate(
         const domainLevelDown = domain.split(".").slice(1).join(".");
         const wildcardPrefixed = `*.${domainLevelDown}`;
 
+        // Search by domain value only (not domainId) because certificates.domain
+        // has a global unique constraint. A cert created under a parent domain's
+        // domainId still covers this subdomain and must not be re-inserted.
         existing = await trx
             .select()
             .from(certificates)
             .where(
-                and(
-                    eq(certificates.domainId, domainId),
-                    or(
-                        eq(certificates.domain, domain),
-                        and(
-                            eq(certificates.wildcard, true),
-                            or(
-                                eq(certificates.domain, domainLevelDown),
-                                eq(certificates.domain, wildcardPrefixed)
-                            )
+                or(
+                    eq(certificates.domain, domain),
+                    and(
+                        eq(certificates.wildcard, true),
+                        or(
+                            eq(certificates.domain, domainLevelDown),
+                            eq(certificates.domain, wildcardPrefixed)
                         )
                     )
                 )
             );
     } else {
-        // For non-NS domains, we only match exact domain names
+        // For non-NS domains, match exact domain name only
         existing = await trx
             .select()
             .from(certificates)
-            .where(
-                and(
-                    eq(certificates.domainId, domainId),
-                    eq(certificates.domain, domain) // exact match for non-NS domains
-                )
-            );
+            .where(eq(certificates.domain, domain));
     }
 
     if (existing.length > 0) {
@@ -111,5 +106,5 @@ export async function createCertificate(
         status: "pending",
         updatedAt: Math.floor(Date.now() / 1000),
         createdAt: Math.floor(Date.now() / 1000)
-    });
+    }).onConflictDoNothing();
 }
