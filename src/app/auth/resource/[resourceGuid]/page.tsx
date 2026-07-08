@@ -126,8 +126,13 @@ export default async function ResourceAuthPage(props: {
         } catch (e) {}
     }
 
+    // postAuthPath is a resource-level default landing path. Only apply it
+    // when no ?redirect= deep-path was supplied by the original request.
+    // If searchParams.redirect has already set a specific URL we must honour
+    // it — overriding it here is what caused users to be sent to the wrong
+    // page after SSO login when their Pangolin session had expired.
     const normalizedPostAuthPath = normalizePostAuthPath(authInfo.postAuthPath);
-    if (normalizedPostAuthPath) {
+    if (normalizedPostAuthPath && !searchParams.redirect) {
         redirectUrl = new URL(authInfo.url).origin + normalizedPostAuthPath;
     }
 

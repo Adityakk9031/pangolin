@@ -300,7 +300,6 @@ export default function ResourceAuthPortal(props: ResourceAuthPortalProps) {
         let isAllowed = false;
         try {
             const response = await resourceAccessProxy(props.resource.id);
-            console.log("response", response);
             if (response.error) {
                 setAccessDenied(true);
             } else {
@@ -311,8 +310,14 @@ export default function ResourceAuthPortal(props: ResourceAuthPortalProps) {
         }
 
         if (isAllowed) {
-            // window.location.href = props.redirect;
-            router.refresh();
+            // Use a full page reload so the browser issues a fresh request to
+            // this URL (which still carries the ?redirect= query parameter).
+            // The server then performs the SSO token exchange and issues a
+            // server-side redirect() to the original deep-path URL.
+            // router.refresh() alone does NOT reliably follow server-side
+            // redirect() calls in the Next.js App Router, causing users to
+            // land on the Pangolin panel instead of the desired resource.
+            window.location.reload();
         }
     }
 
