@@ -501,16 +501,11 @@ export function PolicyAccessRulesTable({
                 accessorKey: "value",
                 header: () => <span className="p-3">{t("value")}</span>,
                 cell: ({ row }) => {
-                    let selectedCountry: (typeof COUNTRIES)[number] | undefined;
-                    if (
-                        (row.original.match === "COUNTRY" ||
-                            row.original.match === "COUNTRY_IS_NOT") &&
-                        row.original.value
-                    ) {
-                        selectedCountry = COUNTRIES.find(
-                            (c) => c.code === row.original.value
-                        );
-                    }
+                    const currentCodes = (row.original.value || "")
+                        .split(",")
+                        .map((c) => c.trim().toUpperCase())
+                        .filter(Boolean);
+
                     return row.original.match === "COUNTRY" ||
                         row.original.match === "COUNTRY_IS_NOT" ? (
                         <Popover>
@@ -521,23 +516,37 @@ export function PolicyAccessRulesTable({
                                     disabled={
                                         readonly || isRuleLocked(row.original)
                                     }
-                                    className="w-full min-w-0 justify-between"
+                                    className="w-full min-w-0 justify-between overflow-hidden text-left"
                                 >
-                                    {selectedCountry ? (
-                                        <>
-                                            <span>
-                                                {selectedCountry.code === "ALL"
-                                                    ? "🌍"
-                                                    : countryCodeToFlagEmoji(
-                                                          selectedCountry.code
-                                                      )}
-                                                &nbsp;&nbsp;
-                                                {selectedCountry.name} (
-                                                {selectedCountry.code})
-                                            </span>
-                                        </>
-                                    ) : (
+                                    {currentCodes.length === 0 ? (
                                         t("selectCountry")
+                                    ) : currentCodes.length === 1 ? (
+                                        (() => {
+                                            const found = COUNTRIES.find(
+                                                (c) => c.code === currentCodes[0]
+                                            );
+                                            if (!found) return t("selectCountry");
+                                            return (
+                                                <span className="truncate">
+                                                    {found.code === "ALL"
+                                                        ? "🌍"
+                                                        : countryCodeToFlagEmoji(
+                                                              found.code
+                                                          )}
+                                                    &nbsp;&nbsp;
+                                                    {found.name} ({found.code})
+                                                </span>
+                                            );
+                                        })()
+                                    ) : (
+                                        <span className="truncate">
+                                            {currentCodes.slice(0, 3).map((code) => (
+                                                <span key={code} className="mr-1">
+                                                    {countryCodeToFlagEmoji(code)}
+                                                </span>
+                                            ))}
+                                            {currentCodes.length} countries ({currentCodes.join(", ")})
+                                        </span>
                                     )}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
@@ -552,33 +561,59 @@ export function PolicyAccessRulesTable({
                                             {t("noCountryFound")}
                                         </CommandEmpty>
                                         <CommandGroup>
-                                            {COUNTRIES.map((country) => (
-                                                <CommandItem
-                                                    key={country.code}
-                                                    value={country.name}
-                                                    onSelect={() =>
-                                                        updateRule(
-                                                            row.original.ruleId,
-                                                            {
-                                                                value: country.code
+                                            {COUNTRIES.map((country) => {
+                                                const isSelected = currentCodes.includes(
+                                                    country.code
+                                                );
+                                                return (
+                                                    <CommandItem
+                                                        key={country.code}
+                                                        value={country.name}
+                                                        onSelect={() => {
+                                                            let newCodes: string[];
+                                                            if (country.code === "ALL") {
+                                                                newCodes = ["ALL"];
+                                                            } else {
+                                                                const withoutAll = currentCodes.filter(
+                                                                    (c) => c !== "ALL"
+                                                                );
+                                                                if (withoutAll.includes(country.code)) {
+                                                                    newCodes = withoutAll.filter(
+                                                                        (c) => c !== country.code
+                                                                    );
+                                                                    if (newCodes.length === 0) {
+                                                                        newCodes = [country.code];
+                                                                    }
+                                                                } else {
+                                                                    newCodes = [
+                                                                        ...withoutAll,
+                                                                        country.code
+                                                                    ];
+                                                                }
                                                             }
-                                                        )
-                                                    }
-                                                >
-                                                    <Check
-                                                        className={`mr-2 h-4 w-4 ${row.original.value === country.code ? "opacity-100" : "opacity-0"}`}
-                                                    />
-                                                    <span>
-                                                        {country.code === "ALL"
-                                                            ? "🌍"
-                                                            : countryCodeToFlagEmoji(
-                                                                  country.code
-                                                              )}
-                                                    </span>
-                                                    {country.name} (
-                                                    {country.code})
-                                                </CommandItem>
-                                            ))}
+                                                            updateRule(
+                                                                row.original.ruleId,
+                                                                {
+                                                                    value: newCodes.join(", ")
+                                                                }
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`}
+                                                        />
+                                                        <span>
+                                                            {country.code === "ALL"
+                                                                ? "🌍"
+                                                                : countryCodeToFlagEmoji(
+                                                                      country.code
+                                                                  )}
+                                                        </span>
+                                                        {country.name} (
+                                                        {country.code})
+                                                    </CommandItem>
+                                                );
+                                            })}
                                         </CommandGroup>
                                     </CommandList>
                                 </Command>

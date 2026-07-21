@@ -1271,7 +1271,8 @@ async function checkRules(
     // sort rules by priority in ascending order
     rules = rules.sort((a, b) => a.priority - b.priority);
 
-    for (const rule of rules) {
+    for (let i = 0; i < rules.length; i++) {
+        const rule = rules[i];
         if (!rule.enabled) {
             continue;
         }
@@ -1294,19 +1295,61 @@ async function checkRules(
             clientIp &&
             (rule.match === "COUNTRY" || rule.match === "COUNTRY_IS_NOT")
         ) {
-            // COUNTRY=ALL should not affect local/private/CGNAT addresses.
-            if (
-                rule.value.toUpperCase() === "ALL" &&
-                isLocalOrCarrierGradeNatIp(clientIp)
-            ) {
-                continue;
-            }
+            if (rule.match === "COUNTRY_IS_NOT") {
+                const combinedCountries: string[] = [];
+                let lastIndex = i;
+                for (let j = i; j < rules.length; j++) {
+                    const r = rules[j];
+                    if (
+                        r.enabled &&
+                        r.match === "COUNTRY_IS_NOT" &&
+                        r.action === rule.action
+                    ) {
+                        const codes = r.value
+                            .split(",")
+                            .map((c) => c.trim().toUpperCase())
+                            .filter(Boolean);
+                        combinedCountries.push(...codes);
+                        lastIndex = j;
+                    } else if (!r.enabled) {
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
 
-            const inCountry = await isIpInGeoIP(ipCC, rule.value);
-            const matched = rule.match === "COUNTRY" ? inCountry : !inCountry;
+                if (
+                    combinedCountries.includes("ALL") &&
+                    isLocalOrCarrierGradeNatIp(clientIp)
+                ) {
+                    i = lastIndex;
+                    continue;
+                }
 
-            if (matched) {
-                return rule.action as any;
+                const inAnyCountry = await isIpInGeoIP(
+                    ipCC,
+                    combinedCountries.join(",")
+                );
+                if (!inAnyCountry) {
+                    return rule.action as any;
+                }
+                i = lastIndex;
+            } else {
+                const codes = rule.value
+                    .split(",")
+                    .map((code) => code.trim().toUpperCase())
+                    .filter(Boolean);
+                if (
+                    codes.includes("ALL") &&
+                    isLocalOrCarrierGradeNatIp(clientIp)
+                ) {
+                    continue;
+                }
+
+                const inCountry = await isIpInGeoIP(ipCC, rule.value);
+                if (inCountry) {
+                    return rule.action as any;
+                }
             }
         } else if (clientIp && rule.match == "ASN") {
             // ASN=ALL/AS0 should not affect local/private/CGNAT addresses.
@@ -1339,11 +1382,20 @@ async function isIpInGeoIP(
     ipCountryCode: string | undefined,
     checkCountryCode: string
 ): Promise<boolean> {
-    if (checkCountryCode == "ALL") {
+    if (!ipCountryCode) {
+        return false;
+    }
+
+    const codes = checkCountryCode
+        .split(",")
+        .map((code) => code.trim().toUpperCase())
+        .filter(Boolean);
+
+    if (codes.includes("ALL")) {
         return true;
     }
 
-    return ipCountryCode?.toUpperCase() === checkCountryCode.toUpperCase();
+    return codes.includes(ipCountryCode.toUpperCase());
 }
 
 function isLocalOrCarrierGradeNatIp(ip: string): boolean {

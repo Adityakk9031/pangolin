@@ -135,8 +135,14 @@ export const RuleSchema = z
                 if (!hasMaxmindCountryDb) {
                     return false;
                 }
-                // Check if it's a valid 2-letter country code or "ALL"
-                return /^[A-Z]{2}$/.test(rule.value) || rule.value === "ALL";
+                const codes = rule.value
+                    .split(",")
+                    .map((c) => c.trim().toUpperCase())
+                    .filter(Boolean);
+                return (
+                    codes.length > 0 &&
+                    codes.every((c) => /^[A-Z]{2}$/.test(c) || c === "ALL")
+                );
             }
             return true;
         },

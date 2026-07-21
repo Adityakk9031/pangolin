@@ -97,10 +97,21 @@ export function getResourceRuleValueValidationError(
         case "REGION":
             return isValidRegionId(value) ? null : "Invalid region ID provided";
         case "COUNTRY":
-        case "COUNTRY_IS_NOT":
-            return COUNTRIES.some((country) => country.code === value)
-                ? null
-                : "Invalid country code provided";
+        case "COUNTRY_IS_NOT": {
+            const countryCodes = value
+                .split(",")
+                .map((code) => code.trim().toUpperCase())
+                .filter(Boolean);
+            if (countryCodes.length === 0) {
+                return "Invalid country code provided";
+            }
+            const allValid = countryCodes.every(
+                (code) =>
+                    code === "ALL" ||
+                    COUNTRIES.some((country) => country.code === code)
+            );
+            return allValid ? null : "Invalid country code provided";
+        }
         case "ASN":
             const normalizedValue = value.trim().toUpperCase();
             return /^AS\d+$/.test(normalizedValue) ||

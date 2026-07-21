@@ -276,6 +276,38 @@ function runTests() {
         "Invalid ASN should return an error"
     );
 
+    // Country validation tests
+    assertEquals(
+        getResourceRuleValueValidationError("COUNTRY", "US"),
+        null,
+        "Single country code should be valid"
+    );
+    assertEquals(
+        getResourceRuleValueValidationError("COUNTRY", "US, CA, MX"),
+        null,
+        "Comma-separated list of country codes should be valid"
+    );
+    assertEquals(
+        getResourceRuleValueValidationError("COUNTRY_IS_NOT", "US,CA"),
+        null,
+        "Comma-separated list of country codes for COUNTRY_IS_NOT should be valid"
+    );
+    assertEquals(
+        getResourceRuleValueValidationError("COUNTRY", "ALL"),
+        null,
+        "ALL country selector should be valid"
+    );
+    assertEquals(
+        getResourceRuleValueValidationError("COUNTRY", "INVALID_CODE"),
+        "Invalid country code provided",
+        "Invalid country code should return error"
+    );
+    assertEquals(
+        getResourceRuleValueValidationError("COUNTRY", "US, INVALID_CODE"),
+        "Invalid country code provided",
+        "Mixed valid and invalid country code should return error"
+    );
+
     console.log("All tests passed!");
 }
 

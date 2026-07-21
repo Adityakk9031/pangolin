@@ -81,7 +81,18 @@ export function createPolicyRuleValueSchema(t: TranslateFn, match: string) {
         case "COUNTRY":
         case "COUNTRY_IS_NOT":
             return required.refine(
-                (value) => COUNTRIES.some((country) => country.code === value),
+                (value) => {
+                    const countryCodes = value
+                        .split(",")
+                        .map((code) => code.trim().toUpperCase())
+                        .filter(Boolean);
+                    if (countryCodes.length === 0) return false;
+                    return countryCodes.every(
+                        (code) =>
+                            code === "ALL" ||
+                            COUNTRIES.some((country) => country.code === code)
+                    );
+                },
                 { message: t("rulesErrorInvalidCountryDescription") }
             );
         case "ASN":
