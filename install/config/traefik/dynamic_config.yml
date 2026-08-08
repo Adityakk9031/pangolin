@@ -21,7 +21,7 @@ http:
 
     # Next.js router (handles everything except API and WebSocket paths)
     next-router:
-      rule: "Host(`{{.DashboardDomain}}`) && !PathPrefix(`/api/v1`)"
+      rule: "Host(`{{.DashboardDomain}}`) && !PathPrefix(`/api/v1`) && !PathPrefix(`/v1`)"
       service: next-service
       entryPoints:
         - websecure
@@ -34,6 +34,17 @@ http:
     api-router:
       rule: "Host(`{{.DashboardDomain}}`) && PathPrefix(`/api/v1`)"
       service: api-service
+      entryPoints:
+        - websecure
+      middlewares:
+        - badger
+      tls:
+        certResolver: letsencrypt
+
+    # Integration API router (handles /v1 paths)
+    integration-api-router:
+      rule: "Host(`{{.DashboardDomain}}`) && PathPrefix(`/v1`)"
+      service: integration-api-service
       entryPoints:
         - websecure
       middlewares:
@@ -62,6 +73,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://pangolin:3000"  # API/WebSocket server
+
+    integration-api-service:
+      loadBalancer:
+        servers:
+          - url: "http://pangolin:3003"  # Integration API server
 
 tcp:
   serversTransports:

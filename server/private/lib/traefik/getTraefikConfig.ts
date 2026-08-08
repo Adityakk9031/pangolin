@@ -1599,5 +1599,38 @@ export async function getTraefikConfig(
         }
     }
 
+    if (config.getRawConfig().flags?.enable_integration_api) {
+        const intPort = config.getRawConfig().server.integration_port;
+        const intHost = config.getRawConfig().server.internal_hostname;
+
+        if (!config_output.http.services) {
+            config_output.http.services = {};
+        }
+        if (!config_output.http.routers) {
+            config_output.http.routers = {};
+        }
+
+        config_output.http.services["integration-api-service"] = {
+            loadBalancer: {
+                servers: [
+                    {
+                        url: `http://${intHost}:${intPort}`
+                    }
+                ]
+            }
+        };
+
+        config_output.http.routers["integration-api-router"] = {
+            entryPoints: [
+                config.getRawConfig().traefik.https_entrypoint,
+                config.getRawConfig().traefik.http_entrypoint
+            ],
+            middlewares: ["badger"],
+            service: "integration-api-service",
+            rule: `PathPrefix(\`/v1\`)`,
+            priority: 150
+        };
+    }
+
     return config_output;
 }
