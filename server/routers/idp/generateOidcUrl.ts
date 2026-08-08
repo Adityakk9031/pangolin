@@ -17,6 +17,8 @@ import { build } from "@server/build";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
+import { cleanRedirect } from "@server/lib/cleanRedirect";
+
 const paramsSchema = z
     .object({
         idpId: z.coerce.number<number>()
@@ -170,9 +172,11 @@ export async function generateOidcUrl(
             parsedScopes
         );
 
+        const safePostAuthRedirectUrl = cleanRedirect(postAuthRedirectUrl);
+
         const stateJwt = jsonwebtoken.sign(
             {
-                redirectUrl: postAuthRedirectUrl, // TODO: validate that this is safe
+                redirectUrl: safePostAuthRedirectUrl,
                 state,
                 codeVerifier
             },

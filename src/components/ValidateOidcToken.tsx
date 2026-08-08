@@ -17,6 +17,7 @@ import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
 import { useTranslations } from "next-intl";
 import { validateOidcUrlCallbackProxy } from "@app/actions/server";
+import { cleanRedirect } from "@app/lib/cleanRedirect";
 import { build } from "@server/build";
 
 type ValidateOidcTokenParams = {
@@ -129,9 +130,9 @@ export default function ValidateOidcToken(props: ValidateOidcTokenParams) {
                     return;
                 }
 
-                const redirectUrl = data.redirectUrl;
+                const safeRedirectUrl = cleanRedirect(data.redirectUrl);
 
-                if (!redirectUrl) {
+                if (!safeRedirectUrl) {
                     router.push(env.app.dashboardUrl);
                 }
 
@@ -141,10 +142,10 @@ export default function ValidateOidcToken(props: ValidateOidcTokenParams) {
                     await new Promise((resolve) => setTimeout(resolve, 100));
                 }
 
-                if (redirectUrl.startsWith("http")) {
-                    window.location.href = data.redirectUrl; // this is validated by the parent using this component
+                if (safeRedirectUrl.startsWith("http")) {
+                    window.location.href = safeRedirectUrl;
                 } else {
-                    router.push(data.redirectUrl);
+                    router.push(safeRedirectUrl);
                 }
             } catch (e: any) {
                 console.error(e);

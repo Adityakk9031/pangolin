@@ -23,6 +23,7 @@ import { generateOidcRedirectUrl } from "@server/lib/idp/generateRedirectUrl";
 import jmespath from "jmespath";
 import jsonwebtoken from "jsonwebtoken";
 import config from "@server/lib/config";
+import { cleanRedirect } from "@server/lib/cleanRedirect";
 import {
     createSession,
     generateId,
@@ -182,8 +183,9 @@ export async function validateOidcCallback(
         const {
             codeVerifier,
             state,
-            redirectUrl: postAuthRedirectUrl
+            redirectUrl: rawPostAuthRedirectUrl
         } = stateObj.data;
+        const postAuthRedirectUrl = cleanRedirect(rawPostAuthRedirectUrl);
 
         if (state !== expectedState) {
             logger.error("State mismatch", { expectedState, state });
