@@ -88,6 +88,74 @@ const isIronError = (error: unknown): error is IronError => {
     );
 };
 
+/**
+ * Inspect the raw error string from the IronRDP WASM engine and return a
+ * user-friendly message when we can recognise a known failure pattern.
+ *
+ * Returns `null` when the error is unrecognised (caller should fall back to
+ * the raw backtrace / toString representation).
+ */
+const classifyRdpError = (errorText: string): string | null => {
+    const lower = errorText.toLowerCase();
+
+    // CredSSP / NTLM authentication failure — covers Azure AD-only joined
+    // devices where NTLM cannot resolve cloud-only identities (issue #3428).
+    if (
+        (lower.includes("credssp") || lower.includes("ntlm")) &&
+        (lower.includes("logon failure") ||
+            lower.includes("authentication failed") ||
+            lower.includes("0xc000006d") ||
+            lower.includes("0xc0000064") ||
+            lower.includes("unknown user") ||
+            lower.includes("access denied") ||
+            lower.includes("bad password"))
+    ) {
+        return (
+            "Authentication failed: the target machine rejected the credentials via NTLM/CredSSP. " +
+            "If this device is Azure AD (Entra ID) joined only (no on-premises domain), " +
+            "browser-based RDP is not currently supported because CredSSP negotiates NTLM, " +
+            "which cannot resolve cloud-only identities. " +
+            "Please use a native RDP client with Azure AD sign-in mode, or connect via a hybrid-joined or local account."
+        );
+    }
+
+    // Generic CredSSP negotiation failure (TLS handshake, protocol mismatch, etc.)
+    if (lower.includes("credssp") && lower.includes("error")) {
+        return (
+            "CredSSP authentication error: the RDP security negotiation failed. " +
+            "This may occur if the target does not support NLA/CredSSP, " +
+            "or if the target is an Azure AD-only joined device (which requires Kerberos/PRT-based auth unavailable over browser RDP). " +
+            "Please verify the target's RDP and NLA settings."
+        );
+    }
+
+    // NLA required but failed
+    if (
+        lower.includes("nla") &&
+        (lower.includes("failed") || lower.includes("required"))
+    ) {
+        return (
+            "Network Level Authentication (NLA) failed. " +
+            "The target requires NLA but the authentication could not be completed. " +
+            "If this is an Azure AD-only joined device, browser-based RDP cannot authenticate — please use a native RDP client."
+        );
+    }
+
+    // Connection refused / unreachable
+    if (
+        lower.includes("connection refused") ||
+        lower.includes("connection reset") ||
+        lower.includes("timed out")
+    ) {
+        return (
+            "Could not connect to the remote desktop. " +
+            "Please verify the target machine is online, RDP is enabled, and the firewall allows connections on the configured port."
+        );
+    }
+
+    return null;
+};
+
 export default function RdpClient({
     target,
     error,
@@ -335,11 +403,11 @@ export default function RdpClient({
             });
             setConnecting(false);
             setShowLogin(true);
-            if (isIronError(err)) {
-                setSubmitError(err.backtrace());
-            } else {
-                setSubmitError(`${err}`);
-            }
+            const rawError = isIronError(err)
+                ? err.backtrace()
+                : `${err}`;
+            const friendlyMessage = classifyRdpError(rawError);
+            setSubmitError(friendlyMessage ?? rawError);
         }
     };
 
