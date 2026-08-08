@@ -28,7 +28,14 @@ async function queryUser(userId: string) {
         .leftJoin(idp, eq(users.idpId, idp.idpId))
         .where(eq(users.userId, userId))
         .limit(1);
-    return user;
+
+    if (!user) return undefined;
+
+    return {
+        ...user,
+        email: user.email ?? "",
+        name: user.name ?? ""
+    };
 }
 
 export type GetUserResponse = NonNullable<

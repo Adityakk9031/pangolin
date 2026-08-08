@@ -111,9 +111,15 @@ export async function myDevice(
             roleId: roleByOrg.get(row.orgId) ?? 0
         }));
 
+        const formattedUser = {
+            ...user,
+            email: user.email ?? "",
+            name: user.name ?? ""
+        };
+
         return response<MyDeviceResponse>(res, {
             data: {
-                user,
+                user: formattedUser,
                 orgs: userOrganizations,
                 olm
             },
