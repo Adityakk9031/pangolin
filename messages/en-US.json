@@ -3794,6 +3794,8 @@
     "sshConnectionClosedCode": "Connection closed (code {code})",
     "sshPrivateKeyPlaceholder": "-----BEGIN OPENSSH PRIVATE KEY-----",
     "sshPrivateKeyRequired": "Private key is required",
+    "sshPassphraseOptional": "Key Passphrase (optional)",
+    "sshPassphrasePlaceholder": "Passphrase for encrypted private key",
     "vncTitle": "VNC",
     "vncSignInDescription": "Enter your VNC credentials to connect",
     "vncUsernameOptional": "Username (optional)",

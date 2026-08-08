@@ -45,19 +45,22 @@ type SshCredentialsForm = {
     username: string;
     password: string;
     privateKey: string;
+    passphrase: string;
 };
 
 type ConnectCredentials = {
     username: string;
     password?: string;
     privateKey?: string;
+    passphrase?: string;
     certificate?: string;
 };
 
 const DEFAULT_SSH_CREDENTIALS: SshCredentialsForm = {
     username: "",
     password: "",
-    privateKey: ""
+    privateKey: "",
+    passphrase: ""
 };
 
 export default function SshClient({
@@ -245,6 +248,9 @@ export default function SshClient({
         const privateKey =
             override?.privateKey ??
             (authMethod === "privateKey" ? values.privateKey : "");
+        const passphrase =
+            override?.passphrase ??
+            (authMethod === "privateKey" ? values.passphrase : "");
         const certificate = override?.certificate;
 
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
@@ -283,7 +289,8 @@ export default function SshClient({
             ws.send(
                 JSON.stringify({
                     type: "auth",
-                    password,
+                    password: password || passphrase,
+                    passphrase,
                     privateKey,
                     certificate
                 })
@@ -657,6 +664,29 @@ export default function SshClient({
                                                             )}
                                                             rows={5}
                                                             className="font-mono text-xs"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="passphrase"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(
+                                                            "sshPassphraseOptional"
+                                                        )}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="password"
+                                                            {...field}
+                                                            placeholder={t(
+                                                                "sshPassphrasePlaceholder"
+                                                            )}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
