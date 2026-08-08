@@ -754,22 +754,34 @@ hybridRouter.get(
             const hasSharedPolicy = result.sharedPolicy !== null;
 
             const effectivePolicyPincode = hasSharedPolicy
-                ? result.sharedPolicyPincode
+                ? (result.sharedPolicyPincode ??
+                  result.defaultPolicyPincode ??
+                  null)
                 : (result.defaultPolicyPincode ?? null);
             const effectivePolicyPassword = hasSharedPolicy
-                ? result.sharedPolicyPassword
+                ? (result.sharedPolicyPassword ??
+                  result.defaultPolicyPassword ??
+                  null)
                 : (result.defaultPolicyPassword ?? null);
             const effectivePolicyHeaderAuth = hasSharedPolicy
-                ? result.sharedPolicyHeaderAuth
+                ? (result.sharedPolicyHeaderAuth ??
+                  result.defaultPolicyHeaderAuth ??
+                  null)
                 : (result.defaultPolicyHeaderAuth ?? null);
             const selectedPolicy = hasSharedPolicy
                 ? result.sharedPolicy
                 : result.defaultPolicy;
             const effectiveApplyRules =
                 selectedPolicy?.applyRules ?? result.resources.applyRules;
-            const effectiveSSO = selectedPolicy?.sso ?? result.resources.sso;
+            const effectiveSSO =
+                (hasSharedPolicy
+                    ? result.sharedPolicy?.sso || result.defaultPolicy?.sso
+                    : result.defaultPolicy?.sso) ?? result.resources.sso;
             const effectiveEmailWhitelistEnabled =
-                selectedPolicy?.emailWhitelistEnabled ??
+                (hasSharedPolicy
+                    ? result.sharedPolicy?.emailWhitelistEnabled ||
+                      result.defaultPolicy?.emailWhitelistEnabled
+                    : result.defaultPolicy?.emailWhitelistEnabled) ??
                 result.resources.emailWhitelistEnabled;
 
             const resourceWithAuth: ResourceWithAuth = {

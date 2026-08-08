@@ -35,8 +35,8 @@ export function ResourcePolicyEditForm({
 
     return (
         <ResourcePolicyProvider
-            policy={policies.sharedPolicy}
-            key={policies.sharedPolicy.resourcePolicyId}
+            policy={policies.defaultPolicy}
+            key={policies.defaultPolicy.resourcePolicyId}
         >
             <EditPolicyForm
                 resourceId={resource.resourceId}

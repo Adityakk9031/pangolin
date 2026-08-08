@@ -109,7 +109,7 @@ export function PolicyAuthStackSectionEdit({
     const api = createApiClient(useEnvContext());
 
     const isResourceOverlay = resourceId !== undefined;
-    const authReadonly = readonly || isResourceOverlay;
+    const authReadonly = Boolean(readonly);
 
     const policyRoleItems = useMemo<OverlaySelectedRole[]>(
         () =>
@@ -268,12 +268,7 @@ export function PolicyAuthStackSectionEdit({
     const [isSavingOverlay, setIsSavingOverlay] = useState(false);
 
     async function onSubmit() {
-        if (readonly && !isResourceOverlay) return;
-
-        if (isResourceOverlay) {
-            await saveResourceOverlay();
-            return;
-        }
+        if (readonly) return;
 
         const isValid = await form.trigger();
         if (!isValid) {
@@ -288,6 +283,10 @@ export function PolicyAuthStackSectionEdit({
         const payload = form.getValues();
         const requests: Array<Promise<AxiosResponse<{}> | void>> = [];
         const policyUpdates: Parameters<typeof updatePolicy>[0] = {};
+
+        if (isResourceOverlay) {
+            requests.push(saveResourceOverlay());
+        }
 
         requests.push(
             api
