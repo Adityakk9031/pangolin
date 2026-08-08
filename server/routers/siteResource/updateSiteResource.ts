@@ -74,6 +74,7 @@ const updateSiteResourceSchema = z
         tcpPortRangeString: portRangeStringSchema,
         udpPortRangeString: portRangeStringSchema,
         disableIcmp: z.boolean().optional(),
+        advertiseDestination: z.boolean().optional(),
         authDaemonPort: z.int().positive().nullish(),
         authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         pamMode: z.enum(["passthrough", "push"]).optional(),
@@ -322,6 +323,7 @@ export async function updateSiteResource(
             tcpPortRangeString,
             udpPortRangeString,
             disableIcmp,
+            advertiseDestination,
             authDaemonPort,
             authDaemonMode,
             pamMode,
@@ -583,6 +585,9 @@ export async function updateSiteResource(
                                   ? true
                                   : false)
                             : disableIcmp,
+                    ...(advertiseDestination !== undefined && {
+                        advertiseDestination
+                    }),
                     domainId,
                     subdomain: finalSubdomain,
                     fullDomain,

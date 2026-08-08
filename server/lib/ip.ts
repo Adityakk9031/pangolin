@@ -499,6 +499,7 @@ export function generateRemoteSubnets(
         .filter((sr) => {
             if (!sr.enabled) return false;
             if (!sr.destination) return false;
+            if (sr.advertiseDestination === false) return false;
 
             if (sr.mode === "cidr") {
                 // check if its a valid CIDR using zod

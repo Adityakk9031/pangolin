@@ -444,6 +444,9 @@ export const siteResources = pgTable(
             .notNull()
             .default("*"),
         disableIcmp: boolean("disableIcmp").notNull().default(false),
+        advertiseDestination: boolean("advertiseDestination")
+            .notNull()
+            .default(true),
         authDaemonPort: integer("authDaemonPort").default(22123),
         pamMode: varchar("pamMode", { length: 32 })
             .$type<"passthrough" | "push">()

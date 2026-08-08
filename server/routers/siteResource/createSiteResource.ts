@@ -74,6 +74,7 @@ const createSiteResourceSchema = z
         tcpPortRangeString: portRangeStringSchema,
         udpPortRangeString: portRangeStringSchema,
         disableIcmp: z.boolean().optional(),
+        advertiseDestination: z.boolean().optional(),
         authDaemonPort: z.int().positive().optional(),
         authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         pamMode: z.enum(["passthrough", "push"]).optional(),
@@ -315,6 +316,7 @@ export async function createSiteResource(
             tcpPortRangeString,
             udpPortRangeString,
             disableIcmp,
+            advertiseDestination,
             authDaemonPort,
             authDaemonMode,
             pamMode,
@@ -580,6 +582,9 @@ export async function createSiteResource(
                     disableIcmp:
                         disableIcmp ||
                         (mode == "http" || mode == "ssh" ? true : false), // default to true for http resources, otherwise false
+                    ...(advertiseDestination !== undefined && {
+                        advertiseDestination
+                    }),
                     domainId,
                     subdomain: finalSubdomain,
                     fullDomain

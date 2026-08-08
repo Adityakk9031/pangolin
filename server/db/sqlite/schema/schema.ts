@@ -438,6 +438,9 @@ export const siteResources = sqliteTable("siteResources", {
     disableIcmp: integer("disableIcmp", { mode: "boolean" })
         .notNull()
         .default(false),
+    advertiseDestination: integer("advertiseDestination", { mode: "boolean" })
+        .notNull()
+        .default(true),
     authDaemonPort: integer("authDaemonPort").default(22123),
     pamMode: text("pamMode")
         .$type<"passthrough" | "push">()
