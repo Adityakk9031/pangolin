@@ -838,6 +838,121 @@ export function initAcmeCertSync(): void {
         );
     }
 
+async function syncPemCertsFromDirectory(dirPath: string): Promise<void> {
+    const certFiles: string[] = [];
+    const keyFiles: Map<string, string> = new Map();
+
+    function scanDir(currentDir: string) {
+        let entries: fs.Dirent[];
+        try {
+            entries = fs.readdirSync(currentDir, { withFileTypes: true });
+        } catch {
+            return;
+        }
+        for (const entry of entries) {
+            const fullPath = path.join(currentDir, entry.name);
+            if (entry.isDirectory()) {
+                scanDir(fullPath);
+            } else if (entry.isFile()) {
+                const ext = path.extname(entry.name).toLowerCase();
+                if ([".pem", ".crt", ".cer", ".key"].includes(ext)) {
+                    try {
+                        const content = fs.readFileSync(fullPath, "utf8");
+                        if (content.includes("-----BEGIN CERTIFICATE-----")) {
+                            certFiles.push(fullPath);
+                        }
+                        if (
+                            content.includes("-----BEGIN PRIVATE KEY-----") ||
+                            content.includes("-----BEGIN RSA PRIVATE KEY-----") ||
+                            content.includes("-----BEGIN EC PRIVATE KEY-----")
+                        ) {
+                            keyFiles.set(entry.name, content);
+                            keyFiles.set(fullPath, content);
+                            const baseName = entry.name.replace(/\.[^/.]+$/, "");
+                            keyFiles.set(baseName, content);
+                        }
+                    } catch {
+                        // ignore read errors
+                    }
+                }
+            }
+        }
+    }
+
+    scanDir(dirPath);
+
+    for (const certFilePath of certFiles) {
+        try {
+            const certContent = fs.readFileSync(certFilePath, "utf8");
+            let validatedX509: crypto.X509Certificate;
+            try {
+                validatedX509 = new crypto.X509Certificate(certContent);
+            } catch {
+                continue;
+            }
+
+            let keyContent = "";
+            if (
+                certContent.includes("-----BEGIN PRIVATE KEY-----") ||
+                certContent.includes("-----BEGIN RSA PRIVATE KEY-----") ||
+                certContent.includes("-----BEGIN EC PRIVATE KEY-----")
+            ) {
+                keyContent = certContent;
+            } else {
+                const baseName = path.basename(
+                    certFilePath,
+                    path.extname(certFilePath)
+                );
+                keyContent =
+                    keyFiles.get(baseName) ||
+                    keyFiles.get(`${baseName}.key`) ||
+                    keyFiles.get("privkey.pem") ||
+                    keyFiles.get("key.pem") ||
+                    "";
+            }
+
+            if (keyContent) {
+                try {
+                    crypto.createPrivateKey(keyContent);
+                } catch {
+                    keyContent = "";
+                }
+            }
+
+            const domains = new Set<string>();
+            if (validatedX509.subject) {
+                const cnMatch = validatedX509.subject.match(/CN=([^,\n]+)/i);
+                if (cnMatch && cnMatch[1]) {
+                    domains.add(cnMatch[1].trim());
+                }
+            }
+            if (validatedX509.subjectAltName) {
+                const sans = validatedX509.subjectAltName.split(",");
+                for (const san of sans) {
+                    const trimmed = san.trim();
+                    if (trimmed.startsWith("DNS:")) {
+                        domains.add(trimmed.slice(4).trim());
+                    }
+                }
+            }
+
+            for (const domain of domains) {
+                if (!domain) continue;
+                await storeCertForDomain(
+                    domain,
+                    certContent,
+                    keyContent,
+                    validatedX509
+                );
+            }
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: error processing PEM cert "${certFilePath}": ${err}`
+            );
+        }
+    }
+}
+
     const runSync = () => {
         if (httpEndpoint) {
             syncAcmeCertsFromHttp(httpEndpoint).catch((err) => {
@@ -845,11 +960,18 @@ export function initAcmeCertSync(): void {
             });
         } else {
             // only run the file-based sync if the HTTP endpoint is not configured, to avoid doubling up
+            if (!fs.existsSync(acmeJsonPath)) {
+                logger.debug(
+                    `acmeCertSync: path "${acmeJsonPath}" does not exist, skipping file sync`
+                );
+                return;
+            }
+
             let stat: fs.Stats | null = null;
             try {
                 stat = fs.statSync(acmeJsonPath);
             } catch (err) {
-                logger.warn(
+                logger.debug(
                     `acmeCertSync: cannot stat path "${acmeJsonPath}": ${err}`
                 );
                 return;
@@ -857,15 +979,6 @@ export function initAcmeCertSync(): void {
 
             if (stat.isDirectory()) {
                 const files = findAcmeJsonFiles(acmeJsonPath);
-                if (files.length === 0) {
-                    logger.debug(
-                        `acmeCertSync: no acme.json files found in directory "${acmeJsonPath}"`
-                    );
-                    return;
-                }
-                // logger.debug(
-                //     `acmeCertSync: found ${files.length} acme.json file(s) in directory "${acmeJsonPath}"`
-                // );
                 for (const file of files) {
                     syncAcmeCerts(file).catch((err) => {
                         logger.error(
@@ -873,6 +986,11 @@ export function initAcmeCertSync(): void {
                         );
                     });
                 }
+                syncPemCertsFromDirectory(acmeJsonPath).catch((err) => {
+                    logger.error(
+                        `acmeCertSync: error during PEM cert sync of "${acmeJsonPath}": ${err}`
+                    );
+                });
             } else {
                 syncAcmeCerts(acmeJsonPath).catch((err) => {
                     logger.error(`acmeCertSync: error during sync: ${err}`);
