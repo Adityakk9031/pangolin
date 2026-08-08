@@ -26,6 +26,7 @@ export type StartDeviceWebAuthBody = z.infer<typeof bodySchema>;
 export type StartDeviceWebAuthResponse = {
     code: string;
     expiresInSeconds: number;
+    url: string;
 };
 
 // Helper function to generate device code in format A1AJ-N5JD
@@ -111,10 +112,18 @@ export async function startDeviceWebAuth(
         // calculate relative expiration in seconds
         const expiresInSeconds = Math.floor((expiresAt - Date.now()) / 1000);
 
+        // Construct explicit HTTPS verification URL for clients
+        const host = req.get("host") || "";
+        const isHttpLocal =
+            host.startsWith("localhost") || host.startsWith("127.0.0.1");
+        const protocol = isHttpLocal ? req.protocol : "https";
+        const url = `${protocol}://${host}/device-auth?code=${code}`;
+
         return response<StartDeviceWebAuthResponse>(res, {
             data: {
                 code,
-                expiresInSeconds
+                expiresInSeconds,
+                url
             },
             success: true,
             error: false,
