@@ -17,6 +17,8 @@ import { build } from "@server/build";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
+import { PangolinOAuth2Client } from "@server/lib/idp/oauth2Client";
+
 const paramsSchema = z
     .object({
         idpId: z.coerce.number<number>()
@@ -154,7 +156,7 @@ export async function generateOidcUrl(
             decryptedClientSecret,
             redirectUrl
         });
-        const client = new arctic.OAuth2Client(
+        const client = new PangolinOAuth2Client(
             decryptedClientId,
             decryptedClientSecret,
             redirectUrl

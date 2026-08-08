@@ -40,6 +40,7 @@ import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { assignUserToOrg, removeUserFromOrg } from "@server/lib/userOrg";
 import { unwrapRoleMapping } from "@app/lib/idpRoleMapping";
+import { PangolinOAuth2Client } from "@server/lib/idp/oauth2Client";
 
 const ensureTrailingSlash = (url: string): string => {
     return url;
@@ -138,7 +139,7 @@ export async function validateOidcCallback(
             undefined,
             loginPageId
         );
-        const client = new arctic.OAuth2Client(
+        const client = new PangolinOAuth2Client(
             decryptedClientId,
             decryptedClientSecret,
             redirectUrl
